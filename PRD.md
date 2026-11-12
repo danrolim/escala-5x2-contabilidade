@@ -117,7 +117,7 @@ Cada violação exibe um texto curto explicando a regra infringida e sua base le
 - **Visualização em tela**: grade semanal (funcionário × dia × turno), com código de cores para descanso/trabalho e indicadores de conformidade.
 - **Impressão/PDF do navegador**: layout otimizado para impressão (CSS de impressão dedicado).
 - **Exportação CSV**: a mesma grade da tela/PDF (funcionário × dia, todas as 4 semanas, todos os 7 dias, incluindo "Folga"), em um único arquivo `.csv` com separador `;` — abre direto no Excel/planilha, sem precisar de biblioteca extra para gerar `.xlsx`.
-- **PDF formatado pela aplicação**: gerado no navegador via biblioteca JavaScript (`jsPDF` + `jspdf-autotable`, carregadas por CDN) — mais leve que gerar PDF em Python/Pyodide —, com cabeçalho da empresa, data de geração, uma tabela por semana, a **legenda das regras de domingo** ao final (regra geral, comércio, mulheres e a recomendação da EC 141/2026) e um **rodapé "CL Contabilidade"** em todas as páginas.
+- **PDF formatado pela aplicação**: gerado no navegador via biblioteca JavaScript (`jsPDF` + `jspdf-autotable`, carregadas por CDN) — mais leve que gerar PDF em Python/Pyodide —, com cabeçalho da empresa, data de geração, uma tabela por semana e a **legenda das regras de domingo** ao final (regra geral, comércio, mulheres e a recomendação da EC 141/2026). Sem rodapé.
 
 ## 9. Persistência de dados
 

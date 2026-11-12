@@ -700,13 +700,6 @@ function registrarEventos() {
       y += 5;
     });
 
-    const paginas = doc.internal.getNumberOfPages();
-    for (let pagina = 1; pagina <= paginas; pagina++) {
-      doc.setPage(pagina);
-      doc.setFontSize(8);
-      doc.text("CL Contabilidade", 14, 290);
-    }
-
     doc.save("escala.pdf");
   });
 }
