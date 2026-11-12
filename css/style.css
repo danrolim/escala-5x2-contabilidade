@@ -1,0 +1,294 @@
+:root {
+  --cor-fundo: #f4f6f8;
+  --cor-texto: #1f2733;
+  --cor-primaria: #1d5f73;
+  --cor-primaria-escura: #133f4c;
+  --cor-borda: #d7dde3;
+  --cor-card: #ffffff;
+  --cor-erro: #b3261e;
+  --cor-erro-fundo: #fdecea;
+  --cor-alerta: #8a5700;
+  --cor-alerta-fundo: #fff3cd;
+  --cor-ok: #1e6b3a;
+  --cor-ok-fundo: #e7f5ec;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--cor-fundo);
+  color: var(--cor-texto);
+}
+
+header.topo {
+  background: var(--cor-primaria-escura);
+  color: #fff;
+  padding: 16px 24px;
+}
+
+header.topo h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+header.topo p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.aviso-persistencia {
+  background: var(--cor-alerta-fundo);
+  color: var(--cor-alerta);
+  border: 1px solid #f0d58a;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+section.card {
+  background: var(--cor-card);
+  border: 1px solid var(--cor-borda);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+section.card h2 {
+  margin-top: 0;
+  font-size: 1.05rem;
+  color: var(--cor-primaria-escura);
+  border-bottom: 1px solid var(--cor-borda);
+  padding-bottom: 8px;
+}
+
+.campo {
+  margin-bottom: 12px;
+}
+
+.campo label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.campo input[type="text"],
+.campo input[type="number"],
+.campo input[type="time"],
+.campo select {
+  width: 100%;
+  max-width: 320px;
+  padding: 6px 8px;
+  border: 1px solid var(--cor-borda);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.linha-campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.dias-semana {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dias-semana label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: normal;
+  background: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+table th,
+table td {
+  border: 1px solid var(--cor-borda);
+  padding: 6px 8px;
+  text-align: left;
+}
+
+table th {
+  background: #eef2f5;
+}
+
+.linha-item {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px dashed var(--cor-borda);
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.linha-item .campo {
+  margin-bottom: 0;
+}
+
+.checkbox-turnos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--cor-primaria);
+  color: #fff;
+}
+
+button:hover {
+  background: var(--cor-primaria-escura);
+}
+
+button.secundario {
+  background: #fff;
+  color: var(--cor-primaria);
+  border: 1px solid var(--cor-primaria);
+}
+
+button.perigo {
+  background: var(--cor-erro);
+  color: #fff;
+  border: none;
+}
+
+.barra-acoes {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.resumo-totais {
+  font-size: 0.85rem;
+  color: #555;
+  margin-top: 8px;
+}
+
+.mensagem {
+  padding: 8px 12px;
+  border-radius: 5px;
+  font-size: 0.85rem;
+  margin-top: 10px;
+}
+
+.mensagem.sucesso {
+  background: var(--cor-ok-fundo);
+  color: var(--cor-ok);
+  border: 1px solid #b7ddc3;
+}
+
+.mensagem.erro {
+  background: var(--cor-erro-fundo);
+  color: var(--cor-erro);
+  border: 1px solid #f2c0bc;
+}
+
+.lista-violacoes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lista-violacoes li {
+  padding: 8px 10px;
+  border-radius: 5px;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.lista-violacoes li.erro {
+  background: var(--cor-erro-fundo);
+  color: var(--cor-erro);
+  border: 1px solid #f2c0bc;
+}
+
+.lista-violacoes li.alerta {
+  background: var(--cor-alerta-fundo);
+  color: var(--cor-alerta);
+  border: 1px solid #f0d58a;
+}
+
+.lista-violacoes li .base-legal {
+  display: block;
+  font-size: 0.75rem;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+
+.semana-titulo {
+  font-weight: 700;
+  margin: 18px 0 6px;
+  color: var(--cor-primaria-escura);
+}
+
+select.celula-escala {
+  width: 100%;
+  font-size: 0.8rem;
+  padding: 3px;
+}
+
+.celula-violacao {
+  background: var(--cor-erro) !important;
+  color: #fff !important;
+}
+
+select.celula-violacao option {
+  color: #000;
+  background: #fff;
+}
+
+#overlay-carregando {
+  position: fixed;
+  inset: 0;
+  background: rgba(19, 63, 76, 0.95);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 1000;
+  font-size: 1rem;
+}
+
+#overlay-carregando.oculto {
+  display: none;
+}
+
+.oculto {
+  display: none !important;
+}

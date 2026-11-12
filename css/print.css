@@ -1,0 +1,30 @@
+@media print {
+  header.topo,
+  .aviso-persistencia,
+  #secao-empresa,
+  #secao-funcionarios,
+  .barra-acoes,
+  #overlay-carregando,
+  #secao-conformidade {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+  }
+
+  section.card {
+    border: none;
+    padding: 0;
+  }
+
+  table {
+    font-size: 11px;
+  }
+
+  select.celula-escala {
+    border: none;
+    appearance: none;
+    background: transparent;
+  }
+}

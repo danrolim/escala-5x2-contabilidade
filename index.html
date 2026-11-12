@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Escala 5x2 — CL Contabilidade</title>
+  <link rel="stylesheet" href="css/style.css?v=6" />
+  <link rel="stylesheet" href="css/print.css?v=6" media="print" />
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+  <div id="overlay-carregando">
+    <div>Carregando o ambiente Python no navegador (Pyodide)...</div>
+    <div style="font-size: 0.8rem; opacity: 0.8;">Isso pode levar alguns segundos na primeira vez.</div>
+  </div>
+
+  <header class="topo">
+    <h1>Sistema de Adequação de Escala — Escala 5x2</h1>
+    <p>Baseado na EC 141/2026 (fim da escala 6x1). Ferramenta interna da contabilidade.</p>
+  </header>
+
+  <main>
+    <div class="aviso-persistencia">
+      ⚠️ Os dados cadastrados aqui ficam salvos apenas neste navegador/dispositivo (não há servidor central).
+      Use o botão <strong>"Exportar backup"</strong> regularmente para não perder os dados e para levá-los a outro computador.
+    </div>
+
+    <section class="card" id="secao-empresa">
+      <h2>1. Dados da empresa</h2>
+      <form id="form-empresa">
+        <div class="campo">
+          <label for="nome-empresa">Nome da empresa (opcional)</label>
+          <input type="text" id="nome-empresa" placeholder="Ex.: Comércio Exemplo Ltda." />
+        </div>
+
+        <div class="linha-campos">
+          <div class="campo">
+            <label for="setor-empresa">Setor</label>
+            <select id="setor-empresa">
+              <option value="geral">Geral</option>
+              <option value="comercio">Comércio</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="fase-lei">Fase da lei vigente</label>
+            <select id="fase-lei">
+              <option value="42h">42 horas (a partir de 16/12/2026)</option>
+              <option value="40h">40 horas (a partir de 16/12/2027)</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label for="carga-horaria">Carga horária semanal contratada (h)</label>
+            <input type="number" id="carga-horaria" min="1" max="44" step="0.5" value="42" />
+          </div>
+          <div class="campo">
+            <label>Jornada diária (todos os turnos)</label>
+            <div id="jornada-diaria-estimada">8h24min</div>
+          </div>
+        </div>
+        <ul style="font-size: 0.8rem; color: #666; margin-top: -8px; padding-left: 18px;">
+          <li>Regra geral: 1 domingo de folga a cada 7 semanas (Lei 605/1949).</li>
+          <li>Comércio: 1 domingo de folga a cada 3 semanas (Lei 10.101/2000).</li>
+          <li>Mulheres: independentemente do setor, pelo menos 1 domingo de folga a cada 15 dias (art. 386 da CLT).</li>
+          <li>A EC 141/2026 recomenda que, dos 2 dias de descanso semanal, um seja preferencialmente o domingo.</li>
+        </ul>
+
+        <div class="campo">
+          <label>Dias da semana em que a empresa funciona</label>
+          <div class="dias-semana" id="dias-semana">
+            <label><input type="checkbox" class="chk-dia" value="0" checked /> Segunda</label>
+            <label><input type="checkbox" class="chk-dia" value="1" checked /> Terça</label>
+            <label><input type="checkbox" class="chk-dia" value="2" checked /> Quarta</label>
+            <label><input type="checkbox" class="chk-dia" value="3" checked /> Quinta</label>
+            <label><input type="checkbox" class="chk-dia" value="4" checked /> Sexta</label>
+            <label><input type="checkbox" class="chk-dia" value="5" checked /> Sábado</label>
+            <label><input type="checkbox" class="chk-dia" value="6" /> Domingo</label>
+          </div>
+        </div>
+
+        <div class="campo">
+          <label>Turnos de trabalho</label>
+          <div id="lista-turnos"></div>
+          <button type="button" class="secundario" id="btn-add-turno">+ Adicionar turno</button>
+        </div>
+
+        <div class="barra-acoes">
+          <button type="submit">Salvar dados da empresa</button>
+          <button type="button" class="perigo" id="btn-limpar-formulario">Limpar formulário</button>
+        </div>
+        <div id="msg-empresa"></div>
+      </form>
+    </section>
+
+    <section class="card" id="secao-funcionarios">
+      <h2>2. Funcionários</h2>
+      <div id="lista-funcionarios"></div>
+      <div class="barra-acoes">
+        <button type="button" class="secundario" id="btn-add-funcionario">+ Adicionar funcionário</button>
+        <button type="button" id="btn-salvar-funcionarios">Salvar funcionários</button>
+      </div>
+      <div id="resumo-funcionarios" class="resumo-totais"></div>
+      <div id="msg-funcionarios"></div>
+    </section>
+
+    <section class="card" id="secao-escala">
+      <h2>3. Escala gerada</h2>
+      <div class="barra-acoes">
+        <button type="button" id="btn-gerar-escala">Gerar escala</button>
+        <button type="button" class="secundario" id="btn-imprimir">Imprimir / PDF do navegador</button>
+        <button type="button" class="secundario" id="btn-exportar-csv">Exportar CSV</button>
+        <button type="button" class="secundario" id="btn-exportar-pdf">Exportar PDF formatado</button>
+        <button type="button" class="secundario" id="btn-exportar-backup">Exportar backup</button>
+        <button type="button" class="secundario" id="btn-importar-backup">Importar backup</button>
+        <input type="file" id="input-importar-backup" accept="application/json" class="oculto" />
+      </div>
+      <div id="msg-escala"></div>
+      <div id="avisos-geracao"></div>
+      <div id="container-escala"></div>
+    </section>
+
+    <section class="card" id="secao-conformidade">
+      <h2>4. Conformidade</h2>
+      <ul class="lista-violacoes" id="lista-violacoes">
+        <li>Gere a escala para ver o resultado da validação aqui.</li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="js/app.js?v=7"></script>
+</body>
+</html>
