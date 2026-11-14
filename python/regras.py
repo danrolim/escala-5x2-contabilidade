@@ -10,7 +10,14 @@ FASES_PADRAO = {
     "40h": {"limite_horas_semanais": 40, "vigencia_inicio": "2027-12-16"},
 }
 
-PERIODO_DOMINGO_MULHER_DIAS = 15
+
+# Escala quinzenal do art. 386 da CLT: a mulher tem direito a folgar no
+# domingo pelo menos uma vez a cada 15 dias — na prática, isso é uma escala
+# alternada (trabalhou um domingo, o domingo seguinte tem que ser de folga),
+# não "até 2 domingos seguidos trabalhados". Por isso o teto é 7 dias (1
+# semana), não 15: o mecanismo em gerador_escala.py força a folga assim que
+# se passa 1 semana desde o último domingo de descanso.
+PERIODO_DOMINGO_MULHER_DIAS = 7
 PERIODO_DOMINGO_COMERCIO_DIAS = 21
 PERIODO_DOMINGO_GERAL_DIAS = 49
 
