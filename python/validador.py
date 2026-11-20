@@ -112,4 +112,33 @@ def validar_escala(empresa, funcionarios, escala):
                         }
                     )
 
+    # A escala é reaplicada em repetição (mesmo ciclo valendo de novo depois
+    # da última semana) — por isso também verifica a "virada" do fim deste
+    # ciclo para o domingo da semana 1, usando o estado acumulado de cada
+    # funcionário ao final da última semana. O gerador já tenta evitar isso
+    # (ver gerador_escala.py), mas uma escala editada à mão pode reintroduzir
+    # o problema, e esta é a única camada que validaria esse caso.
+    if escala["semanas"]:
+        primeira_semana = escala["semanas"][0]
+        for f in funcionarios:
+            fid = f["id"]
+            periodo_max = periodo_maximo_domingo_dias(f["sexo"], setor)
+            domingo_livre_semana1 = DOMINGO in primeira_semana.get("folgas", {}).get(fid, [])
+            if not domingo_livre_semana1 and dias_desde_domingo_livre[fid] + 7 > periodo_max:
+                violacoes.append(
+                    {
+                        "funcionario_id": fid,
+                        "funcionario_nome": f["nome"],
+                        "semana": 1,
+                        "dia": DOMINGO,
+                        "nivel": "erro",
+                        "mensagem": (
+                            f"Ao repetir este ciclo de {len(escala['semanas'])} semanas, ficaria sem "
+                            f"domingo de descanso há mais de {periodo_max} dias na virada do ciclo "
+                            f"(emenda da última semana com a semana 1)."
+                        ),
+                        "base_legal": base_legal_domingo(f["sexo"], setor),
+                    }
+                )
+
     return violacoes
