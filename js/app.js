@@ -695,15 +695,27 @@ function registrarEventos() {
     if (!violacoes.length) {
       doc.setFontSize(9);
       y += 6;
+      doc.setTextColor(30, 107, 58); // --cor-ok
       doc.text("Nenhuma violação encontrada. Escala conforme as regras configuradas.", 14, y);
+      doc.setTextColor(0, 0, 0);
       y += 10;
     } else {
+      // Cores diferentes da grade da escala (tema padrão azul do autoTable),
+      // nos mesmos tons de erro/alerta usados na tela (.lista-violacoes),
+      // para não confundir a tabela de conformidade com a escala em si.
       doc.autoTable({
         head: [["Funcionário", "Violação", "Base legal"]],
         body: violacoes.map((v) => [v.funcionario_nome || "-", v.mensagem, v.base_legal]),
         startY: y + 3,
         styles: { fontSize: 8 },
         columnStyles: { 0: { cellWidth: 35 }, 2: { cellWidth: 45 } },
+        headStyles: { fillColor: [179, 38, 30], textColor: 255 }, // --cor-erro
+        didParseCell: (data) => {
+          if (data.section !== "body") return;
+          const ehAlerta = violacoes[data.row.index].nivel === "alerta";
+          data.cell.styles.fillColor = ehAlerta ? [255, 243, 205] : [253, 236, 234]; // --cor-alerta-fundo / --cor-erro-fundo
+          data.cell.styles.textColor = ehAlerta ? [138, 87, 0] : [179, 38, 30]; // --cor-alerta / --cor-erro
+        },
       });
       y = doc.lastAutoTable.finalY + 10;
     }
