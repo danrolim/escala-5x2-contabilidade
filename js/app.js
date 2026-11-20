@@ -684,6 +684,34 @@ function registrarEventos() {
       }
     });
 
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFontSize(11);
+    doc.text("Conformidade", 14, y);
+    y += 3;
+    const violacoes = ultimaEscala.violacoes || [];
+    if (!violacoes.length) {
+      doc.setFontSize(9);
+      y += 6;
+      doc.text("Nenhuma violação encontrada. Escala conforme as regras configuradas.", 14, y);
+      y += 10;
+    } else {
+      doc.autoTable({
+        head: [["Funcionário", "Violação", "Base legal"]],
+        body: violacoes.map((v) => [v.funcionario_nome || "-", v.mensagem, v.base_legal]),
+        startY: y + 3,
+        styles: { fontSize: 8 },
+        columnStyles: { 0: { cellWidth: 35 }, 2: { cellWidth: 45 } },
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
     const legenda = [
       "Regra geral: 1 domingo de folga a cada 7 semanas (Lei 605/1949).",
       "Mulheres no setor geral: se trabalhar um domingo, o domingo seguinte deve ser de folga — escala quinzenal alternada (art. 386 da CLT).",
