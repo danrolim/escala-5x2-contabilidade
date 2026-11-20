@@ -2,31 +2,15 @@
 
 Não é um otimizador exato: é uma heurística (ver PRD.md, seção 6) que busca uma
 distribuição que já nasça dentro da lei, em vez de gerar algo genérico e deixar
-toda a conformidade para o ajuste manual. Para isso:
+toda a conformidade para o ajuste manual. Prioridades, da mais alta para a mais
+baixa:
 
-- Cada funcionário é fixado em UM turno (entre os que ele é apto a atuar),
-  balanceando a quantidade de pessoas por turno — evita que a mesma pessoa
-  apareça em turnos diferentes em dias diferentes, o que não reflete a prática
-  real de escalas fixas.
-- A quantidade de dias trabalhados por semana de cada funcionário é limitada
-  pela carga horária contratada dividida pelas horas do turno dele, não apenas
-  pelo mínimo de 2 folgas — isso evita o estouro de carga horária.
-- Cada funcionário tem **no máximo 2 folgas por semana** (os dias em que a
-  empresa fecha já contam dentro dessas 2, não se soma folga extra além
-  disso) — a única exceção é quando a carga horária contratada força mais
-  folga do que isso (turno mais longo que o necessário para os dias de
-  funcionamento).
-- Sábado e domingo (quando a empresa funciona neles) são, por padrão,
-  as 2 folgas de todo mundo; só o mínimo necessário por turno é escalado
-  para trabalhar nesses dias, girando entre os colegas semana a semana —
-  quem é escalado troca a folga de sábado/domingo por um dia de semana,
-  sem ultrapassar as 2 folgas totais.
-- Os dias de folga "extras" de dias de semana (quando a carga horária exige
-  mais de 2, ou quando sábado/domingo foi trocado por um dia de semana) são
-  distribuídos em rodízio ENTRE OS COLEGAS DE TURNO (round-robin "tipo
-  baralho"), não de forma independente por pessoa — isso mantém, sempre que
-  o quadro de funcionários permitir, o mínimo de pessoas por turno em todos
-  os dias, em vez de vários funcionários coincidirem a folga no mesmo dia.
+1. Cobertura dos turnos escolhidos em cada dia (mínimo de cada turno).
+2. Folgas: no máximo 2 por semana, domingo preferencial, limites legais de
+   domingo trabalhado.
+3. Turno fixo: cada funcionário começa no turno para o qual foi atribuído, mas
+   pode ser deslocado para outro turno em que está apto, num dia específico,
+   para cobrir uma falta (ver ``_alocar_dia``).
 
 Dias da semana seguem a convenção de ``datetime.date.weekday()``:
 0 = Segunda ... 6 = Domingo.
@@ -37,6 +21,11 @@ from regras import formatar_horas, periodo_maximo_domingo_dias
 DOMINGO = 6
 SABADO = 5
 SEMANAS_POR_ESCALA = 4
+NOMES_DIAS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+
+
+def _minimo(turno):
+    return 2 if turno.get("revezamento") else 1
 
 
 def _turnos_aptos(funcionario, turnos):
@@ -46,6 +35,27 @@ def _turnos_aptos(funcionario, turnos):
     if not permitidos:
         return [t["id"] for t in turnos]
     return permitidos
+
+
+def _componentes_turnos(turnos, funcionarios):
+    pai = {t["id"]: t["id"] for t in turnos}
+
+    def encontrar(x):
+        while pai[x] != x:
+            x = pai[x]
+        return x
+
+    for f in funcionarios:
+        aptos = _turnos_aptos(f, turnos)
+        for outro in aptos[1:]:
+            ra, rb = encontrar(aptos[0]), encontrar(outro)
+            if ra != rb:
+                pai[ra] = rb
+
+    grupos = {}
+    for t in turnos:
+        grupos.setdefault(encontrar(t["id"]), set()).add(t["id"])
+    return list(grupos.values())
 
 
 def _atribuir_turno_fixo(funcionarios, turnos, avisos):
@@ -61,11 +71,11 @@ def _atribuir_turno_fixo(funcionarios, turnos, avisos):
         contagem[escolhido] += 1
 
     for turno in turnos:
-        minimo = 2 if turno.get("revezamento") else 1
-        if contagem[turno["id"]] < minimo:
+        aptos_ao_turno = sum(1 for f in funcionarios if turno["id"] in _turnos_aptos(f, turnos))
+        if aptos_ao_turno < _minimo(turno):
             avisos.append(
-                f"Turno '{turno['nome']}' tem apenas {contagem[turno['id']]} funcionário(s) "
-                f"apto(s) cadastrado(s); o mínimo necessário é {minimo}."
+                f"Turno '{turno['nome']}' tem apenas {aptos_ao_turno} funcionário(s) "
+                f"apto(s) cadastrado(s); o mínimo necessário é {_minimo(turno)}."
             )
     return atribuicao
 
@@ -100,35 +110,53 @@ def _dias_trabalho_maximo(funcionarios, turno_atribuido, turno_por_id, carga_con
     return maximo
 
 
-def _avisar_subdimensionamento(funcionarios, turnos, turno_atribuido, dias_trabalho_max, dias_funcionamento, avisos):
-    for turno in turnos:
-        membros = [f for f in funcionarios if turno_atribuido.get(f["id"]) == turno["id"]]
+def _montar_grupos(funcionarios, turnos, turno_atribuido, componentes):
+    grupos = []
+    ids_ordenados = [t["id"] for t in turnos]
+    turno_por_id = {t["id"]: t for t in turnos}
+    for comp in componentes:
+        membros = [f["id"] for f in funcionarios if turno_atribuido.get(f["id"]) in comp]
         if not membros:
             continue
-        minimo = 2 if turno.get("revezamento") else 1
-        necessario = len(dias_funcionamento) * minimo
-        disponivel = sum(dias_trabalho_max.get(f["id"], 0) for f in membros)
+        grupos.append(
+            {
+                "membros": membros,
+                "turnos": [
+                    (t_id, _minimo(turno_por_id[t_id]), turno_por_id[t_id]["nome"])
+                    for t_id in ids_ordenados
+                    if t_id in comp
+                ],
+            }
+        )
+    return grupos
+
+
+def _avisar_subdimensionamento(grupos, dias_trabalho_max, dias_funcionamento, avisos):
+    for g in grupos:
+        minimo_total = sum(minimo for _, minimo, _ in g["turnos"])
+        necessario = len(dias_funcionamento) * minimo_total
+        disponivel = sum(dias_trabalho_max.get(fid, 0) for fid in g["membros"])
         if disponivel < necessario:
+            nomes = ", ".join(f"'{nome}'" for _, _, nome in g["turnos"])
             avisos.append(
-                f"Turno '{turno['nome']}': com a carga horária atual, os {len(membros)} "
+                f"Turno(s) {nomes}: com a carga horária atual, os {len(g['membros'])} "
                 f"funcionário(s) alocado(s) somam {disponivel} dia(s)-pessoa de trabalho por "
-                f"semana, menos que os {necessario} necessários para manter {minimo} "
-                f"funcionário(s) em todos os {len(dias_funcionamento)} dias de funcionamento. "
-                f"Considere alocar mais funcionários a este turno."
+                f"semana, menos que os {necessario} necessários para manter a cobertura mínima "
+                f"em todos os {len(dias_funcionamento)} dias de funcionamento. Considere alocar "
+                f"mais funcionários a este turno."
             )
 
 
 def _selecionar_trabalhadores_domingo(
     membros, minimo, sexo_por_fid, setor, dias_desde_domingo_livre, semana, avisos, nome_turno
 ):
-    """Decide quem trabalha no domingo nesta semana.
+    """Decide quem trabalha no domingo nesta semana para um turno.
 
     O padrão é todo mundo folgar no domingo (preferência do EC 141/2026); só o
-    mínimo necessário para cobrir o turno é escalado para trabalhar, com a
-    escolha girando semana a semana entre os colegas de turno. Prioriza quem
-    ainda está dentro do próprio limite legal de dias sem descanso dominical
-    (diferente para mulheres, geral e comércio); se não houver gente
-    suficiente dentro do limite, usa quem tiver disponível e avisa.
+    mínimo necessário é escolhido para trabalhar, girando semana a semana entre
+    os candidatos. Prioriza quem ainda está dentro do próprio limite legal de
+    dias sem descanso dominical; se não houver gente suficiente dentro do
+    limite, usa quem tiver disponível e avisa.
     """
     if not membros or minimo <= 0:
         return set()
@@ -153,14 +181,6 @@ def _selecionar_trabalhadores_domingo(
 
 
 def _selecionar_trabalhadores_sabado(membros, minimo, semana):
-    """Decide quem trabalha no sábado nesta semana.
-
-    Mesmo princípio do domingo (``_selecionar_trabalhadores_domingo``): o
-    padrão é todo mundo folgar no sábado, e só o mínimo necessário é escalado
-    para trabalhar, girando entre os colegas de turno semana a semana. Sem
-    teto legal aqui (não existe regra específica para sábado), então a
-    rotação é só um rodízio simples.
-    """
     if not membros or minimo <= 0:
         return set()
     qtd = min(minimo, len(membros))
@@ -168,114 +188,153 @@ def _selecionar_trabalhadores_sabado(membros, minimo, semana):
     return {membros[(inicio + k) % len(membros)] for k in range(qtd)}
 
 
-def _trocar_funcionarios_semana(semana, fid_a, fid_b, turno_id, dias_funcionamento):
-    """Troca ``fid_a`` e ``fid_b`` (mesmo turno) na semana inteira — folgas e
-    alocação diária — preservando a cobertura do turno em todos os dias e a
-    carga horária de cada um (ambos têm o mesmo ``dias_trabalho_maximo``, por
-    estarem no mesmo turno, então a troca da escala inteira entre eles nunca
-    estoura a carga horária de nenhum dos dois)."""
+def _trocar_folgas_semana(semana, fid_a, fid_b):
     folgas = semana["folgas"]
     folgas[fid_a], folgas[fid_b] = folgas[fid_b], folgas[fid_a]
-    for dia in dias_funcionamento:
-        roster = semana["turnos"][dia][turno_id]
-        a_estava, b_estava = fid_a in roster, fid_b in roster
-        if a_estava and not b_estava:
-            roster.remove(fid_a)
-            roster.append(fid_b)
-        elif b_estava and not a_estava:
-            roster.remove(fid_b)
-            roster.append(fid_a)
 
 
 def _distribuir_folgas_extra(membros_ids, offs_por_membro, faltam_por_membro, candidatos):
-    """Distribui as folgas 'extras' de um grupo (colegas do mesmo turno) em
-    rodízio, para manter o máximo de pessoas simultaneamente disponíveis em
-    cada dia, em vez de cada um escolher seus dias de folga de forma isolada.
-
-    Não depende da semana: a mesma posição de cada funcionário na fila sempre
-    mapeia para o mesmo dia candidato, então o padrão de folgas se repete
-    identicamente semana a semana (folgas em dias fixos), que é o que se pede
-    quando a empresa não tem domingo em rodízio obrigando variação. O domingo
-    nunca entra nesta lista de candidatos (ver chamada em ``gerar_escala``) —
-    ele é tratado à parte, apenas pelo rodízio legal obrigatório.
+    """Distribui as folgas de dias de semana de um grupo, escolhendo sempre o dia
+    candidato com menos folgas já atribuídas ao grupo — assim o mesmo dia não
+    fica com folga de duas pessoas enquanto houver outro livre. Não depende da
+    semana, então o padrão de folgas fixas se repete semana a semana.
     """
     if not candidatos:
         return
 
-    fila = []
-    restante = dict(faltam_por_membro)
-    progresso = True
-    while progresso:
-        progresso = False
-        for fid in membros_ids:
-            if restante.get(fid, 0) > 0:
-                fila.append(fid)
-                restante[fid] -= 1
-                progresso = True
+    carga = {d: 0 for d in range(7)}
+    for fid in membros_ids:
+        for d in offs_por_membro[fid]:
+            carga[d] += 1
 
-    total_dias = len(candidatos)
-    for posicao, fid in enumerate(fila):
-        indice = posicao % total_dias
-        tentativas = 0
-        while candidatos[indice] in offs_por_membro[fid] and tentativas < total_dias:
-            indice = (indice + 1) % total_dias
-            tentativas += 1
-        offs_por_membro[fid].add(candidatos[indice])
+    for fid in membros_ids:
+        for _ in range(faltam_por_membro.get(fid, 0)):
+            livres = [d for d in candidatos if d not in offs_por_membro[fid]]
+            if not livres:
+                break
+            escolhido = min(livres, key=lambda d: (carga[d], candidatos.index(d)))
+            offs_por_membro[fid].add(escolhido)
+            carga[escolhido] += 1
+
+
+def _mover_para(alvo, atual, trabalhando, aptos_por_fid, minimo_por_turno, turnos_ids):
+    """Acha um caminho de trocas que coloque mais um funcionário em ``alvo``,
+    tirando-o de um turno que tem sobra (ou em cadeia, até achar sobra).
+    Altera ``atual`` in-place e devolve False se não há como."""
+    contagem = {t: 0 for t in turnos_ids}
+    for fid in trabalhando:
+        contagem[atual[fid]] += 1
+
+    pai = {alvo: None}
+    fila = [alvo]
+    for x in fila:
+        for fid in trabalhando:
+            s = atual[fid]
+            if s == x or x not in aptos_por_fid[fid] or s in pai:
+                continue
+            pai[s] = (x, fid)
+            if contagem[s] > minimo_por_turno[s]:
+                no = s
+                while pai[no] is not None:
+                    destino, w = pai[no]
+                    atual[w] = destino
+                    no = destino
+                return True
+            fila.append(s)
+    return False
+
+
+def _alocar_dia(trabalhando, aptos_por_fid, turnos_ids, minimo_por_turno):
+    """Distribui os funcionários que trabalham no dia pelos turnos em que estão
+    aptos, priorizando cobrir o mínimo de cada turno. Começa com cada um no
+    próprio turno (fixo) e só troca quando algum turno ficaria abaixo do mínimo."""
+    atual = {fid: aptos_por_fid[fid][0] for fid in trabalhando}
+    for alvo in turnos_ids:
+        while sum(1 for fid in trabalhando if atual[fid] == alvo) < minimo_por_turno[alvo]:
+            if not _mover_para(alvo, atual, trabalhando, aptos_por_fid, minimo_por_turno, turnos_ids):
+                break
+    return atual
+
+
+def _recalcular_alocacao(
+    semana, idx, funcionarios, aptos_por_fid, turnos_ids, minimo_por_turno, turno_por_id, dias_funcionamento, avisos
+):
+    alocacao = {}
+    for dia in dias_funcionamento:
+        trabalhando = [
+            f["id"]
+            for f in funcionarios
+            if f["id"] in aptos_por_fid and dia not in semana["folgas"][f["id"]]
+        ]
+        atual = _alocar_dia(trabalhando, aptos_por_fid, turnos_ids, minimo_por_turno)
+        alocacao_dia = {t: [] for t in turnos_ids}
+        for fid in trabalhando:
+            alocacao_dia[atual[fid]].append(fid)
+        for t in turnos_ids:
+            n = len(alocacao_dia[t])
+            if n < minimo_por_turno[t]:
+                avisos.append(
+                    f"Semana {idx + 1}, {NOMES_DIAS[dia]}, turno '{turno_por_id[t]['nome']}': "
+                    f"{n} funcionário(s) escalado(s), mínimo exigido é {minimo_por_turno[t]}."
+                )
+        alocacao[dia] = alocacao_dia
+    semana["turnos"] = alocacao
 
 
 def _gerar_semanas_ciclo(
     funcionarios,
-    turnos,
-    turno_por_id,
-    turno_atribuido,
-    membros_por_turno,
+    grupos,
+    aptos_por_fid,
     dias_trabalho_max,
-    dias_funcionamento,
     dias_fechados,
+    dias_candidatos_fixos,
     funciona_domingo,
     funciona_sabado,
-    dias_candidatos_fixos,
     setor,
     sexo_por_fid,
     estado_inicial,
     ciclo_semanas,
     avisos,
 ):
-    """Gera as ``ciclo_semanas`` semanas do ciclo a partir de um estado inicial
-    de "dias desde o último domingo de descanso" por funcionário. Devolve as
-    semanas e o estado final (dias desde o último domingo de descanso de cada
-    funcionário ao fim da última semana) — usado por ``gerar_escala`` para
-    achar um estado inicial que já combine com a repetição do próprio ciclo
-    (ver comentário em ``gerar_escala``)."""
+    """Gera as folgas de ``ciclo_semanas`` semanas a partir de um estado inicial
+    de "dias desde o último domingo de descanso" por funcionário. A alocação
+    diária por turno é calculada depois, a partir das folgas (ver
+    ``_recalcular_alocacao``). Devolve as semanas e o estado final."""
     dias_desde_domingo_livre = dict(estado_inicial)
     semanas = []
 
     for semana in range(ciclo_semanas):
         domingo_trabalhadores = set()
         sabado_trabalhadores = set()
-        for turno_id, membros in membros_por_turno.items():
-            minimo = 2 if turno_por_id[turno_id].get("revezamento") else 1
-            membros_disponiveis = [fid for fid in membros if dias_trabalho_max.get(fid, 0) > 0]
-            if funciona_domingo:
-                domingo_trabalhadores |= _selecionar_trabalhadores_domingo(
-                    membros_disponiveis,
-                    minimo,
-                    sexo_por_fid,
-                    setor,
-                    dias_desde_domingo_livre,
-                    semana,
-                    avisos,
-                    turno_por_id[turno_id]["nome"],
-                )
-            if funciona_sabado:
-                sabado_trabalhadores |= _selecionar_trabalhadores_sabado(membros_disponiveis, minimo, semana)
+        for g in grupos:
+            for t_id, minimo, nome in g["turnos"]:
+                candidatos = [
+                    fid
+                    for fid in g["membros"]
+                    if t_id in aptos_por_fid[fid]
+                    and dias_trabalho_max.get(fid, 0) > 0
+                    and fid not in domingo_trabalhadores
+                ]
+                if funciona_domingo:
+                    domingo_trabalhadores |= _selecionar_trabalhadores_domingo(
+                        candidatos, minimo, sexo_por_fid, setor, dias_desde_domingo_livre, semana, avisos, nome
+                    )
+                if funciona_sabado:
+                    candidatos_sab = [
+                        fid
+                        for fid in g["membros"]
+                        if t_id in aptos_por_fid[fid]
+                        and dias_trabalho_max.get(fid, 0) > 0
+                        and fid not in sabado_trabalhadores
+                    ]
+                    sabado_trabalhadores |= _selecionar_trabalhadores_sabado(candidatos_sab, minimo, semana)
 
         offs_por_funcionario = {}
         faltam_por_funcionario = {}
 
         for f in funcionarios:
             fid = f["id"]
-            if turno_atribuido.get(fid) is None:
+            if fid not in aptos_por_fid:
                 offs_por_funcionario[fid] = set(range(7))
                 faltam_por_funcionario[fid] = 0
                 continue
@@ -294,9 +353,6 @@ def _gerar_semanas_ciclo(
             faltam_por_funcionario[fid] = max(0, offs_desejadas - len(offs))
             excesso = len(offs) - offs_desejadas
             if excesso > 0:
-                # domingo/sábado por padrão já davam folga além do necessário
-                # (ex.: carga horária permite trabalhar os 2); tira o que sobrar,
-                # priorizando manter o domingo como folga quando possível.
                 candidatos_remocao = [d for d in (SABADO, DOMINGO) if d in offs]
                 for dia in candidatos_remocao:
                     if excesso <= 0:
@@ -304,31 +360,14 @@ def _gerar_semanas_ciclo(
                     offs.discard(dia)
                     excesso -= 1
 
-        for turno_id, membros in membros_por_turno.items():
-            faltam_grupo = {fid: faltam_por_funcionario[fid] for fid in membros}
-            _distribuir_folgas_extra(membros, offs_por_funcionario, faltam_grupo, dias_candidatos_fixos)
-
-        alocacao_semana = {}
-        for dia in dias_funcionamento:
-            alocacao_dia = {t["id"]: [] for t in turnos}
-            for f in funcionarios:
-                t_id = turno_atribuido.get(f["id"])
-                if t_id and dia not in offs_por_funcionario[f["id"]]:
-                    alocacao_dia[t_id].append(f["id"])
-            for turno in turnos:
-                minimo = 2 if turno.get("revezamento") else 1
-                if len(alocacao_dia[turno["id"]]) < minimo:
-                    avisos.append(
-                        f"Semana {semana + 1}, dia {dia}, turno '{turno['nome']}': "
-                        f"{len(alocacao_dia[turno['id']])} funcionário(s) escalado(s), "
-                        f"mínimo exigido é {minimo}."
-                    )
-            alocacao_semana[dia] = alocacao_dia
+        for g in grupos:
+            faltam_grupo = {fid: faltam_por_funcionario[fid] for fid in g["membros"]}
+            _distribuir_folgas_extra(g["membros"], offs_por_funcionario, faltam_grupo, dias_candidatos_fixos)
 
         semanas.append(
             {
                 "folgas": {fid: sorted(d) for fid, d in offs_por_funcionario.items()},
-                "turnos": alocacao_semana,
+                "turnos": {},
             }
         )
 
@@ -370,23 +409,27 @@ def gerar_escala(empresa, funcionarios):
     setor = empresa.get("setor", "geral")
     turnos = empresa["turnos"]
     turno_por_id = {t["id"]: t for t in turnos}
+    turnos_ids = [t["id"] for t in turnos]
+    minimo_por_turno = {t["id"]: _minimo(t) for t in turnos}
     carga_contratada = empresa.get("carga_horaria_semanal") or 0
     funciona_sabado = SABADO in dias_funcionamento
     dias_candidatos_fixos = [d for d in dias_funcionamento if d not in (SABADO, DOMINGO)]
 
     avisos = []
     turno_atribuido = _atribuir_turno_fixo(funcionarios, turnos, avisos)
+    aptos_por_fid = {}
+    for f in funcionarios:
+        home = turno_atribuido.get(f["id"])
+        if home is None:
+            continue
+        aptos_por_fid[f["id"]] = [home] + [t for t in _turnos_aptos(f, turnos) if t != home]
+
     dias_trabalho_max = _dias_trabalho_maximo(
         funcionarios, turno_atribuido, turno_por_id, carga_contratada, dias_funcionamento, avisos
     )
-    _avisar_subdimensionamento(funcionarios, turnos, turno_atribuido, dias_trabalho_max, dias_funcionamento, avisos)
-
-    membros_por_turno = {}
-    for f in funcionarios:
-        t_id = turno_atribuido.get(f["id"])
-        if t_id is None:
-            continue
-        membros_por_turno.setdefault(t_id, []).append(f["id"])
+    componentes = _componentes_turnos(turnos, funcionarios)
+    grupos = _montar_grupos(funcionarios, turnos, turno_atribuido, componentes)
+    _avisar_subdimensionamento(grupos, dias_trabalho_max, dias_funcionamento, avisos)
 
     ciclo_semanas = SEMANAS_POR_ESCALA
     sexo_por_fid = {f["id"]: f["sexo"] for f in funcionarios}
@@ -394,16 +437,13 @@ def gerar_escala(empresa, funcionarios):
 
     semanas, dias_desde_domingo_livre = _gerar_semanas_ciclo(
         funcionarios,
-        turnos,
-        turno_por_id,
-        turno_atribuido,
-        membros_por_turno,
+        grupos,
+        aptos_por_fid,
         dias_trabalho_max,
-        dias_funcionamento,
         dias_fechados,
+        dias_candidatos_fixos,
         funciona_domingo,
         funciona_sabado,
-        dias_candidatos_fixos,
         setor,
         sexo_por_fid,
         estado_inicial,
@@ -412,20 +452,13 @@ def gerar_escala(empresa, funcionarios):
     )
 
     # A escala é pensada para ser reaplicada em repetição (o mesmo ciclo volta
-    # a valer depois da última semana) — por isso a "virada" do fim deste
-    # ciclo para a semana 1 do próximo (igual a esta) tem que respeitar o
-    # mesmo teto legal de domingos seguidos usado dentro do ciclo. Simula essa
-    # repetição numa passada pelas semanas já geradas, carregando o estado
-    # real de dias-sem-domingo de cada funcionário ao fim do ciclo como ponto
-    # de partida da semana 1; quem estourar é trocado por um colega do mesmo
-    # turno dentro do limite. Só uma passada não basta: corrigir a semana 1
-    # muda o estado com que o ciclo termina (logo, o que "entra" na próxima
-    # repetição), então repete a passada até ela não precisar mais trocar
-    # ninguém (ponto fixo) ou até um número de tentativas razoável — sem
-    # tentar gerar tudo de novo a cada vez, só reaplicando a mesma correção
-    # mínima. Sem ninguém disponível para alternar, só avisa — a validação
-    # (validador.py) também sinaliza isso, inclusive em escalas editadas à
-    # mão.
+    # a valer depois da última semana) — por isso a "virada" do fim deste ciclo
+    # para a semana 1 do próximo tem que respeitar o mesmo teto legal de
+    # domingos seguidos. Repete uma passada pelas semanas, carregando o estado
+    # real de dias-sem-domingo de cada funcionário como ponto de partida da
+    # semana 1; quem estourar é trocado (folga inteira) por um colega do mesmo
+    # grupo dentro do limite. Repete a passada até não precisar trocar mais
+    # ninguém; sem ninguém disponível, só avisa.
     if funciona_domingo and semanas:
         nomes_por_fid = {f["id"]: f["nome"] for f in funcionarios}
 
@@ -433,37 +466,37 @@ def gerar_escala(empresa, funcionarios):
             estado = dict(estado_inicial_passada)
             mudou = False
             for semana in semanas:
-                for turno_id, membros in membros_por_turno.items():
-                    trabalhando = set(semana["turnos"][DOMINGO].get(turno_id, []))
-                    descansando = set(membros) - trabalhando
-                    for fid_a in list(trabalhando):
+                for g in grupos:
+                    trabalhando = {fid for fid in g["membros"] if DOMINGO not in semana["folgas"][fid]}
+                    descansando = set(g["membros"]) - trabalhando
+                    for fid_a in sorted(trabalhando):
                         periodo_max_a = periodo_maximo_domingo_dias(sexo_por_fid[fid_a], setor)
                         if estado[fid_a] + 7 <= periodo_max_a:
                             continue
                         candidatos = [
                             fid_b
-                            for fid_b in descansando
-                            if dias_trabalho_max.get(fid_b, 0) > 0
+                            for fid_b in sorted(descansando)
+                            if dias_trabalho_max.get(fid_b, 0) == dias_trabalho_max.get(fid_a, 0)
                             and estado[fid_b] + 7 <= periodo_maximo_domingo_dias(sexo_por_fid[fid_b], setor)
                         ]
                         if not candidatos:
                             avisos_destino.append(
-                                f"Turno '{turno_por_id[turno_id]['nome']}': ao repetir este ciclo de "
-                                f"{ciclo_semanas} semanas, '{nomes_por_fid[fid_a]}' ficaria sem domingo "
-                                f"de descanso há mais de {periodo_max_a} dias na virada do ciclo. Não "
-                                f"há colega do turno dentro do limite para alternar; considere alocar "
-                                f"mais funcionários a este turno."
+                                f"Ao repetir este ciclo de {ciclo_semanas} semanas, "
+                                f"'{nomes_por_fid[fid_a]}' ficaria sem domingo de descanso há mais de "
+                                f"{periodo_max_a} dias na virada do ciclo. Não há colega do grupo "
+                                f"dentro do limite para alternar; considere alocar mais funcionários "
+                                f"a este turno."
                             )
                             continue
                         fid_b = candidatos[0]
-                        _trocar_funcionarios_semana(semana, fid_a, fid_b, turno_id, dias_funcionamento)
+                        _trocar_folgas_semana(semana, fid_a, fid_b)
                         trabalhando.discard(fid_a)
                         trabalhando.add(fid_b)
                         descansando.discard(fid_b)
                         descansando.add(fid_a)
                         mudou = True
                 for fid in estado:
-                    if DOMINGO in semana["folgas"].get(fid, []):
+                    if DOMINGO in semana["folgas"][fid]:
                         estado[fid] = 0
                     else:
                         estado[fid] += 7
@@ -477,12 +510,6 @@ def gerar_escala(empresa, funcionarios):
                 convergiu = True
                 break
         if not convergiu:
-            # Não é falta de tentativa: para alguns quadros pequenos (ex.: 3
-            # pessoas em revezamento mínimo de 2, periodicidade de 2 domingos
-            # seguidos), é matematicamente impossível alternar sem que alguém
-            # estoure o limite em algum momento da repetição, não importa como
-            # as folgas sejam distribuídas — por isso a passada nunca para de
-            # precisar trocar gente.
             avisos.append(
                 "Não foi possível acomodar a repetição deste ciclo sem que alguém acabe "
                 "ultrapassando o limite legal de domingos seguidos trabalhados em algum "
@@ -491,10 +518,20 @@ def gerar_escala(empresa, funcionarios):
                 "folgas sejam distribuídas. Considere alocar mais funcionários aos turnos "
                 "de revezamento; a validação sinaliza onde a violação residual aparece."
             )
-        # Passada final para registrar os avisos de verdade: se já estabilizou,
-        # essa passada confirma (sem trocar nada); senão, é mais uma tentativa
-        # de correção, agora com os avisos de qualquer caso residual.
         _passada_de_reparo(estado, avisos)
+
+    for idx, semana in enumerate(semanas):
+        _recalcular_alocacao(
+            semana,
+            idx,
+            funcionarios,
+            aptos_por_fid,
+            turnos_ids,
+            minimo_por_turno,
+            turno_por_id,
+            dias_funcionamento,
+            avisos,
+        )
 
     return {
         "ciclo_semanas": ciclo_semanas,

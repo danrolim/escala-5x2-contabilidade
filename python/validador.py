@@ -8,6 +8,7 @@ a partir da estrutura ``{"semanas": [...]}``.
 from regras import base_legal_domingo, formatar_horas, periodo_maximo_domingo_dias
 
 DOMINGO = 6
+NOMES_DIAS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 
 
 def validar_escala(empresa, funcionarios, escala):
@@ -104,11 +105,15 @@ def validar_escala(empresa, funcionarios, escala):
                             "turno_id": turno_id,
                             "nivel": "alerta",
                             "mensagem": (
-                                f"Dia {dia}, turno '{turno['nome']}': "
+                                f"{NOMES_DIAS[dia]}, turno '{turno['nome']}': "
                                 f"{len(fids)} funcionário(s) alocado(s), "
                                 f"mínimo exigido é {minimo}."
                             ),
-                            "base_legal": "Revezamento de turnos (mínimo 2 por turno)",
+                            "base_legal": (
+                                "Revezamento de turnos (mínimo 2 por turno)"
+                                if turno.get("revezamento")
+                                else "Cobertura mínima de turno (mínimo 1 por dia de funcionamento)"
+                            ),
                         }
                     )
 

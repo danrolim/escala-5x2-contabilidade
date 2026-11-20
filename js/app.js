@@ -622,7 +622,7 @@ function registrarEventos() {
         linhas.push(linha.join(";"));
       });
     });
-    baixarArquivo("escala.csv", linhas.join("\n"), "text/csv;charset=utf-8");
+    baixarArquivo("escala.csv", "﻿" + linhas.join("\n"), "text/csv;charset=utf-8");
   });
 
   document.getElementById("btn-exportar-backup").addEventListener("click", () => {
