@@ -121,6 +121,8 @@ Cada violação exibe um texto curto explicando a regra infringida e sua base le
 - **Exportação CSV**: a mesma grade da tela/PDF (funcionário × dia, todas as 4 semanas, todos os 7 dias, incluindo "Folga"), em um único arquivo `.csv` com separador `;`, em formato de lista (uma linha por semana × funcionário, com as colunas Semana, Funcionário e os 7 dias) — abre direto no Excel/planilha, sem precisar de biblioteca extra para gerar `.xlsx`. O arquivo é gravado com BOM UTF-8, para o Excel reconhecer os acentos.
 - **PDF formatado pela aplicação**: gerado no navegador via biblioteca JavaScript (`jsPDF` + `jspdf-autotable`, carregadas por CDN) — mais leve que gerar PDF em Python/Pyodide —, com cabeçalho da empresa, data de geração, uma tabela por semana, uma seção **Conformidade** e a **legenda das regras de domingo** ao final (regra geral, mulheres no setor geral, comércio e a recomendação da EC 141/2026). Sem rodapé.
 
+Na grade de cada semana, as células onde há violação são marcadas em vermelho com texto branco, do mesmo jeito que na tela (a célula do funcionário no dia, o nome do funcionário ou o cabeçalho do dia com as células do turno naquele dia).
+
 A seção **Conformidade** do PDF lista cada violação (funcionário, texto e base legal) com as mesmas cores da tela — vermelho para violação e laranja para alerta. Quando não há violação, aparece a mensagem de conformidade em verde.
 
 ## 9. Persistência de dados

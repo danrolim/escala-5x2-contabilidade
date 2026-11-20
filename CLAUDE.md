@@ -43,6 +43,7 @@ Resumo rápido do que já está em produção no código — a especificação c
 - Todas as horas mostradas ao usuário (tela e avisos) usam o formato `Xh` / `XhYYmin` (`formatarHorasMinutos` no JS, `formatar_horas` no Python), nunca decimal.
 - **Mínimo de pessoas por turno**: turno de revezamento = 2 por dia; turno sem revezamento = 1 por dia de funcionamento (`_minimo` em `gerador_escala.py`). Cobrir esse mínimo tem prioridade sobre folgas e sobre o turno fixo.
 - **Seção Conformidade no PDF** (`btn-exportar-pdf` em `js/app.js`): tabela de violações com vermelho para erro e laranja para alerta, mesmos tons da tela; sem violações, mensagem verde. Não usar o azul padrão do autoTable aqui — confundiria com a grade da escala.
+- **Células marcadas no PDF da grade**: `marcarCelulasViolacao` (em `js/app.js`) replica a lógica de `aplicarDestaquesViolacoes` da tela para cada semana e pinta as células com vermelho/branco via `didParseCell`. Se mudar a regra de destaque na tela, mudar também aqui.
 - **Violações são destacadas diretamente na grade da escala** (fundo vermelho, texto branco — classe `.celula-violacao`), além de listadas em "Conformidade". `aplicarDestaquesViolacoes()` usa o campo `dia` que `validador.py` inclui em cada violação (e `turno_id` nas de revezamento) para achar a célula certa via `data-semana`/`data-dia`/`data-funcionario-id` no DOM.
 
 ## Pendências conhecidas (lacunas ou bugs, não são regras de negócio)

@@ -333,6 +333,32 @@ function renderAvisosGeracao(avisos) {
   `;
 }
 
+function marcarCelulasViolacao(semana, idx, diasExibidos) {
+  const marcadas = new Set();
+  const colunaDoDia = (dia) => diasExibidos.indexOf(dia) + 1;
+  (ultimaEscala.violacoes || [])
+    .filter((v) => v.semana === idx + 1)
+    .forEach((v) => {
+      const temDia = v.dia !== null && v.dia !== undefined;
+      const linhaDoFuncionario = funcionarios.findIndex((f) => f.id === v.funcionario_id);
+      if (v.funcionario_id && temDia) {
+        marcadas.add(`b:${linhaDoFuncionario}:${colunaDoDia(v.dia)}`);
+      } else if (v.funcionario_id) {
+        marcadas.add(`b:${linhaDoFuncionario}:0`);
+      } else if (temDia) {
+        marcadas.add(`h:${colunaDoDia(v.dia)}`);
+        if (v.turno_id) {
+          funcionarios.forEach((f, linha) => {
+            if (turnoDoFuncionarioNoDia(semana, f.id, v.dia) === v.turno_id) {
+              marcadas.add(`b:${linha}:${colunaDoDia(v.dia)}`);
+            }
+          });
+        }
+      }
+    });
+  return marcadas;
+}
+
 function aplicarDestaquesViolacoes(violacoes) {
   document.querySelectorAll(".celula-violacao").forEach((el) => el.classList.remove("celula-violacao"));
   if (!violacoes) return;
@@ -674,9 +700,24 @@ function registrarEventos() {
         });
         return linha;
       });
+      const marcadas = marcarCelulasViolacao(semana, idx, diasExibidos);
       doc.setFontSize(11);
       doc.text(`Semana ${idx + 1} de ${ultimaEscala.ciclo_semanas}`, 14, y);
-      doc.autoTable({ head: [colunas], body: linhas, startY: y + 3, styles: { fontSize: 8 } });
+      doc.autoTable({
+        head: [colunas],
+        body: linhas,
+        startY: y + 3,
+        styles: { fontSize: 8 },
+        didParseCell: (data) => {
+          const chave =
+            data.section === "head"
+              ? `h:${data.column.index}`
+              : `b:${data.row.index}:${data.column.index}`;
+          if (!marcadas.has(chave)) return;
+          data.cell.styles.fillColor = [179, 38, 30]; // --cor-erro
+          data.cell.styles.textColor = 255;
+        },
+      });
       y = doc.lastAutoTable.finalY + 10;
       if (y > 260 && idx < ultimaEscala.semanas.length - 1) {
         doc.addPage();
