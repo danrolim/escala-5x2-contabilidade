@@ -11,15 +11,23 @@ FASES_PADRAO = {
 }
 
 
-# Escala quinzenal do art. 386 da CLT: a mulher tem direito a folgar no
-# domingo pelo menos uma vez a cada 15 dias — na prática, isso é uma escala
-# alternada (trabalhou um domingo, o domingo seguinte tem que ser de folga),
-# não "até 2 domingos seguidos trabalhados". Por isso o teto é 7 dias (1
-# semana), não 15: o mecanismo em gerador_escala.py força a folga assim que
+# Escala quinzenal do art. 386 da CLT: no setor GERAL, a mulher tem direito a
+# folgar no domingo pelo menos uma vez a cada 15 dias — na prática, isso é uma
+# escala alternada (trabalhou um domingo, o domingo seguinte tem que ser de
+# folga), não "até 2 domingos seguidos trabalhados". Por isso o teto é 7 dias
+# (1 semana), não 15: o mecanismo em gerador_escala.py força a folga assim que
 # se passa 1 semana desde o último domingo de descanso.
 PERIODO_DOMINGO_MULHER_DIAS = 7
-PERIODO_DOMINGO_COMERCIO_DIAS = 21
 PERIODO_DOMINGO_GERAL_DIAS = 49
+
+# No COMÉRCIO (Lei 10.101/2000), é permitido trabalhar até 2 domingos
+# seguidos antes de folgar um — tanto no padrão "trabalha 2, folga 1" quanto
+# "trabalha 2, folga 2" (a folga adicional é só uma escolha de rodízio, não
+# muda o teto). Isso vale para homens e mulheres: é uma exceção expressa à
+# escala quinzenal alternada do art. 386 da CLT, que no comércio não se
+# aplica — por isso o teto é 14 dias (2 semanas) independente do sexo, e
+# periodo_maximo_domingo_dias() verifica o setor antes do sexo.
+PERIODO_DOMINGO_COMERCIO_DIAS = 14
 
 
 def limite_horas_fase(fase, fases=None):
@@ -32,18 +40,18 @@ def limite_horas_fase(fase, fases=None):
 
 def periodo_maximo_domingo_dias(sexo, setor):
     """Maior intervalo permitido, em dias corridos, sem folga em domingo."""
-    if sexo == "F":
-        return PERIODO_DOMINGO_MULHER_DIAS
     if setor == "comercio":
         return PERIODO_DOMINGO_COMERCIO_DIAS
+    if sexo == "F":
+        return PERIODO_DOMINGO_MULHER_DIAS
     return PERIODO_DOMINGO_GERAL_DIAS
 
 
 def base_legal_domingo(sexo, setor):
+    if setor == "comercio":
+        return "Lei nº 10.101/2000 (comércio — exceção à escala quinzenal da mulher)"
     if sexo == "F":
         return "Art. 386 da CLT"
-    if setor == "comercio":
-        return "Lei nº 10.101/2000"
     return "Lei nº 605/1949"
 
 

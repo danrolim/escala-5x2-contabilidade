@@ -686,8 +686,8 @@ function registrarEventos() {
 
     const legenda = [
       "Regra geral: 1 domingo de folga a cada 7 semanas (Lei 605/1949).",
-      "Comércio: 1 domingo de folga a cada 3 semanas (Lei 10.101/2000).",
-      "Mulheres: se trabalhar um domingo, o domingo seguinte deve ser de folga — escala quinzenal, independentemente do setor (art. 386 da CLT).",
+      "Mulheres no setor geral: se trabalhar um domingo, o domingo seguinte deve ser de folga — escala quinzenal alternada (art. 386 da CLT).",
+      "Comércio: no máximo 2 domingos seguidos trabalhados (folga pelo menos 1 a cada 2 domingos) — vale para homens e mulheres, como exceção à escala quinzenal da mulher (Lei 10.101/2000).",
       "A EC 141/2026 recomenda que, dos 2 dias de descanso semanal, um seja preferencialmente o domingo.",
     ];
     if (y > 250) {

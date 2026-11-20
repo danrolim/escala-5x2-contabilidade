@@ -14,8 +14,8 @@ Sem redução salarial em nenhuma das fases.
 Regras de descanso dominical que coexistem com a emenda:
 
 - **Regra geral:** 1 domingo de folga a cada 7 semanas (Lei 605/1949).
-- **Comércio:** 1 domingo de folga a cada 3 semanas (Lei 10.101/2000).
-- **Mulheres:** escala quinzenal — se trabalhar um domingo, o domingo seguinte deve ser de folga, independentemente do setor (art. 386 da CLT).
+- **Mulheres no setor geral:** escala quinzenal — se trabalhar um domingo, o domingo seguinte deve ser de folga (art. 386 da CLT).
+- **Comércio (homens e mulheres):** no máximo 2 domingos trabalhados seguidos — pode folgar 1 domingo e voltar a trabalhar, ou folgar 2 domingos seguidos (Lei 10.101/2000). É uma exceção expressa à escala quinzenal da mulher: no comércio, ela também pode trabalhar 2 domingos seguidos, não só 1 — essa exceção não se aplica ao setor geral.
 - A EC 141/2026 recomenda que, dos 2 dias de descanso semanal, **um seja preferencialmente o domingo**.
 
 A aplicação deve ajudar empresas a montar escalas de trabalho que já nasçam aderentes a essas regras, evitando montagens manuais sujeitas a erro.
@@ -92,9 +92,9 @@ Algoritmo heurístico (não é um otimizador exato/CSP completo nesta versão) q
 1. **No máximo 2 dias de descanso por semana** para cada funcionário (escala 5x2) — os dias em que a empresa fecha já contam dentro dessas 2 folgas, não se soma folga extra além disso (ex.: empresa fechada sábado e domingo = exatamente essas 2 folgas, sem folga adicional). A única exceção é quando a carga horária contratada, dividida pela jornada diária do turno, resulta em menos dias de trabalho do que isso permitiria — nesse caso há mais de 2 folgas, inevitavelmente.
 1b. **Folgas em dias fixos da semana, sempre que possível**: cada funcionário tende a folgar nos mesmos dias toda semana (previsibilidade), exceto nos dias sujeitos a rodízio obrigatório — domingo e sábado (pontos 2 e 2b) — que variam de propósito.
 2. **Domingo e sábado (quando a empresa funciona neles) são, por padrão, os 2 dias de folga de todo mundo** — não ficam "de fora" das 2 folgas, são a forma mais comum de cumpri-las. Só o mínimo necessário para cobrir o turno é escalado para trabalhar nesses dias, girando entre os colegas de turno semana a semana; quem é escalado troca a folga de sábado ou domingo por um dia de semana naquela semana (sem ultrapassar as 2 folgas totais). No domingo, a rotação respeita o limite legal de cada um sem ultrapassá-lo:
-   - Mulheres: **escala quinzenal** — no máximo **1 domingo trabalhado seguido**; o domingo seguinte ao que ela trabalhou tem que ser de folga (art. 386 da CLT) — prevalece mesmo em empresas do comércio.
-   - Homens / demais, setor geral: podem ser escalados por até **7 semanas seguidas** antes de ter que folgar no domingo.
-   - Homens / demais, setor comércio: podem ser escalados por até **3 semanas seguidas** antes de ter que folgar no domingo.
+   - Mulheres, setor geral: **escala quinzenal** — no máximo **1 domingo trabalhado seguido**; o domingo seguinte ao que ela trabalhou tem que ser de folga (art. 386 da CLT).
+   - Homens / demais, setor geral: podem ser escalados por até **7 semanas seguidas** antes de ter que folgar no domingo (Lei 605/1949).
+   - Comércio, homens e mulheres: podem ser escalados por até **2 domingos seguidos** antes de ter que folgar no domingo (Lei 10.101/2000) — é uma exceção à escala quinzenal da mulher, que no comércio passa a poder trabalhar 2 domingos seguidos em vez de apenas 1; essa exceção não se aplica ao setor geral.
    - Quando não há, entre os colegas de turno, gente suficiente dentro do próprio limite legal para cobrir o mínimo do domingo, a aplicação aloca quem tiver disponível mesmo assim e **avisa explicitamente** que o limite foi ultrapassado por falta de funcionários.
 2b. **Revezamento do sábado**: mesmo princípio do domingo, mas sem base legal específica — é uma regra de distribuição justa definida pelo usuário, sem teto de semanas seguidas.
 3. Em turnos marcados como revezamento, manter **sempre ao menos 2 funcionários** por turno/dia.
